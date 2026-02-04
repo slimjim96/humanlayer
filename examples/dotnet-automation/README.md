@@ -1,90 +1,118 @@
-# HumanLayer .NET Automation Examples
+# HumanLayer .NET Automation Client
 
-Cross-platform .NET 10 examples for automating AI CLI tools with human-in-the-loop oversight using the HumanLayer daemon.
+Cross-platform .NET 10 client for automating AI agents with deterministic human oversight.
 
-## Overview
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-This project demonstrates how to:
+## What is This?
 
-- **Run AI sessions programmatically** via the HumanLayer daemon REST API
-- **Process approvals in batches** for periodic human review
-- **Schedule automated tasks** that run 24/7 with configurable oversight
-- **Monitor events in real-time** using Server-Sent Events (SSE)
-- **Run parallel AI tasks** to maximize throughput
-- **Use alternative AI providers** via OpenRouter proxy
+This is a .NET client library and automation framework for [HumanLayer](https://github.com/humanlayer/humanlayer) - a platform that provides human-in-the-loop capabilities for AI agents.
 
-## Prerequisites
+**Key Features:**
+- Run AI agents (Claude Code) programmatically
+- Queue approvals for periodic human review
+- Schedule 24/7 background automation
+- Support multiple AI providers via OpenRouter
+- Real-time event streaming
 
-1. **.NET 10 SDK** - Install from https://dotnet.microsoft.com/download
-2. **HumanLayer Daemon (hld)** - Running locally or accessible via network
-3. **Claude Code** - Required for Claude-based sessions
+```csharp
+// Launch an AI task with human oversight
+var client = new HumanLayerClient();
 
-### Starting the Daemon
+var result = await client.RunTaskAsync(new AutomationTask
+{
+    Name = "Code Review",
+    Query = "Review this codebase for security issues",
+    AutoApprove = false  // All tool uses require human approval
+});
+```
 
-```bash
-# Install hld if not already installed
-# (See main HumanLayer documentation)
+## Why Human Oversight?
 
-# Start the daemon
-hld daemon start
+AI agents are powerful but make mistakes. For high-stakes operations like:
+- Executing shell commands
+- Modifying production code
+- Sending emails on your behalf
+
+...you need **deterministic human oversight**, not probabilistic accuracy.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Stakes Spectrum                           │
+│                                                              │
+│   LOW              MEDIUM              HIGH                  │
+│   ├────────────────┼────────────────────┤                   │
+│   │                │                    │                    │
+│   ▼                ▼                    ▼                    │
+│ Auto-OK        Audit Trail        Human Approval             │
+│ (Read, Grep)   (WebFetch)        (Bash, Write, Edit)        │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## Quick Start
 
+### Prerequisites
+
+1. **.NET 10 SDK**: https://dotnet.microsoft.com/download
+2. **HumanLayer Daemon**: `npm install -g @anthropic/hld`
+3. **Claude Code**: `npm install -g @anthropic/claude-code`
+
+### Installation
+
 ```bash
-cd examples/dotnet-automation
+# Clone the repository
+git clone https://github.com/yourusername/humanlayer-dotnet.git
+cd humanlayer-dotnet
 
-# Restore dependencies
-dotnet restore
+# Build
+dotnet build
+```
 
-# Run the demo to verify connectivity
+### Run
+
+```bash
+# Start the HumanLayer daemon
+hld daemon start
+
+# Run the demo
 dotnet run -- demo
 ```
 
-## Available Modes
+## Automation Modes
 
 ### Demo Mode
-Quick demonstration of API capabilities - health check, list sessions, list approvals.
-
+Quick API demonstration:
 ```bash
 dotnet run -- demo
 ```
 
 ### Batch Processor
-Processes pending approvals in batches. Automatically approves safe read-only tools, prompts for manual review on others.
-
+Process pending approvals in batches with periodic human review:
 ```bash
 dotnet run -- batch
 ```
-
-**Features:**
-- Auto-approves safe tools (Read, Glob, Grep, etc.)
-- Interactive prompts for dangerous operations
-- Continuous polling with configurable interval
-- Statistics on processed approvals
+- Auto-approves safe tools (Read, Glob, Grep)
+- Prompts for manual review on dangerous operations
+- Runs continuously with configurable intervals
 
 ### Task Scheduler
-Runs AI tasks on a schedule, similar to cron. Ideal for 24/7 background automation.
-
+Run AI tasks on a schedule (cron-like):
 ```bash
 dotnet run -- scheduler
 ```
+- Hourly code reviews (auto-approved, read-only)
+- Daily security scans (auto-approved with timeout)
+- Weekly documentation updates (requires human approval)
 
-**Example scheduled tasks:**
-- Hourly: Code review summaries (read-only, auto-approved)
-- Every 4 hours: Security scans (limited tools, auto-approved)
-- Daily: Documentation updates (requires human approval for edits)
-
-### Real-time Monitor
-Watches for events via SSE stream. Useful for dashboards or notification systems.
-
+### Event Monitor
+Real-time event streaming via SSE:
 ```bash
 dotnet run -- monitor
 ```
 
-### Parallel Tasks
-Runs multiple AI tasks concurrently to maximize throughput.
-
+### Parallel Runner
+Execute multiple AI tasks concurrently:
 ```bash
 dotnet run -- parallel
 ```
@@ -96,17 +124,16 @@ dotnet run -- parallel
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `HUMANLAYER_URL` | Daemon REST API URL | `http://localhost:7777/api/v1` |
-| `WORKING_DIR` | Default working directory for sessions | Current directory |
-| `OPENROUTER_API_KEY` | API key for OpenRouter proxy | (none) |
+| `WORKING_DIR` | Default working directory | Current directory |
+| `OPENROUTER_API_KEY` | API key for OpenRouter | (none) |
 
-### Using OpenRouter for Alternative AI Providers
+### Using Alternative AI Models
 
-You can route requests through OpenRouter to use models from OpenAI, Anthropic, Meta, Mistral, and others:
+Route requests through OpenRouter to use GPT-4, Llama, Mistral, and more:
 
 ```csharp
 var task = new AutomationTask
 {
-    Name = "GPT-4 Analysis",
     Query = "Analyze this codebase",
     ProxyBaseUrl = "https://openrouter.ai/api/v1",
     ProxyModel = "openai/gpt-4-turbo",
@@ -119,186 +146,178 @@ var task = new AutomationTask
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Your .NET Application                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
-│  │   Scheduler  │  │    Batch     │  │   Parallel   │       │
-│  │              │  │  Processor   │  │    Runner    │       │
-│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘       │
-│         └─────────────────┼─────────────────┘               │
-│                           ▼                                  │
-│                 ┌──────────────────┐                        │
-│                 │ HumanLayerClient │                        │
-│                 └────────┬─────────┘                        │
-└──────────────────────────┼──────────────────────────────────┘
-                           │ HTTP/REST
-                           ▼
+│                                                              │
+│   ┌──────────────────────────────────────────────────────┐  │
+│   │                  HumanLayerClient                     │  │
+│   │  • Session Management  • Approval Handling           │  │
+│   │  • Event Streaming     • Task Orchestration          │  │
+│   └──────────────────────────┬───────────────────────────┘  │
+└──────────────────────────────┼──────────────────────────────┘
+                               │ HTTP/REST
+                               ▼
 ┌──────────────────────────────────────────────────────────────┐
 │                   HumanLayer Daemon (hld)                    │
-│  ┌────────────┐  ┌────────────┐  ┌────────────────────────┐ │
-│  │  Sessions  │  │  Approvals │  │  OpenRouter Proxy      │ │
-│  │  Manager   │  │  Queue     │  │  (alternative models)  │ │
-│  └─────┬──────┘  └─────┬──────┘  └───────────┬────────────┘ │
-└────────┼───────────────┼─────────────────────┼──────────────┘
-         │               │                     │
-         ▼               ▼                     ▼
-    ┌─────────┐    ┌──────────┐         ┌──────────────┐
-    │ Claude  │    │  Human   │         │  OpenRouter  │
-    │  Code   │    │ Reviewer │         │   + GPT-4    │
-    └─────────┘    └──────────┘         │   + Llama    │
-                                        │   + etc.     │
-                                        └──────────────┘
+│                                                              │
+│   Sessions ─────▶ Claude Code ─────▶ AI Work                │
+│   Approvals ────▶ Human Review ────▶ Decisions              │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-## Automation Patterns
+## Documentation
 
-### Pattern 1: Fully Automated (Trusted Tasks)
+| Document | Description |
+|----------|-------------|
+| [Getting Started](docs/getting-started.md) | Installation and setup guide |
+| [Core Concepts](docs/concepts.md) | Terminology and principles |
+| [Architecture](docs/architecture.md) | System design deep dive |
+| [API Reference](docs/api-reference.md) | Complete endpoint documentation |
+| [Automation Patterns](docs/patterns.md) | Best practices and examples |
+| [Security](docs/security.md) | Security considerations |
+| [Roadmap](docs/roadmap.md) | Future development plans |
 
-For safe, read-only tasks that don't need human oversight:
+## Code Examples
+
+### Fully Automated (Safe Tasks)
 
 ```csharp
 var task = new AutomationTask
 {
     Name = "Code Analysis",
-    Query = "Analyze code quality",
+    Query = "Analyze code quality and identify issues",
     AutoApprove = true,
     AutoApproveTimeout = TimeSpan.FromMinutes(5),
-    AllowedTools = ["Read", "Glob", "Grep"] // Whitelist safe tools
+    AllowedTools = new[] { "Read", "Glob", "Grep" }  // Safe tools only
 };
+
+var result = await client.RunTaskAsync(task);
 ```
 
-### Pattern 2: Human-in-the-Loop (Sensitive Tasks)
-
-For tasks that modify files or execute commands:
+### Human-in-the-Loop (Sensitive Tasks)
 
 ```csharp
-var task = new AutomationTask
+// Launch task requiring approval
+var session = await client.CreateSessionAsync(new CreateSessionRequest
 {
-    Name = "Code Refactor",
-    Query = "Refactor the authentication module",
-    AutoApprove = false // Every tool use requires approval
-};
+    Query = "Deploy to production",
+    DangerouslySkipPermissions = false
+});
 
-// Run task in background, review approvals periodically
-var sessionData = await client.CreateSessionAsync(/* ... */);
-
-// Later, in your review loop:
-var approvals = await client.GetPendingApprovalsAsync();
-foreach (var approval in approvals)
+// Process approvals as they arrive
+var pending = await client.GetPendingApprovalsAsync();
+foreach (var approval in pending)
 {
-    // Review and decide
-    if (IsAcceptable(approval))
+    if (IsSafe(approval))
         await client.ApproveAsync(approval.Id);
     else
-        await client.DenyAsync(approval.Id, "Reason for denial");
+        await client.DenyAsync(approval.Id, "Requires manual review");
 }
 ```
 
-### Pattern 3: Hybrid (Auto-approve Safe, Review Dangerous)
+### Scheduled Automation
 
 ```csharp
-var safeTools = new HashSet<string> { "Read", "Glob", "Grep" };
-
-var approvals = await client.GetPendingApprovalsAsync();
-foreach (var approval in approvals)
+// Run every hour
+scheduler.Schedule("Hourly Review", TimeSpan.FromHours(1), new AutomationTask
 {
-    if (safeTools.Contains(approval.ToolName))
-    {
-        await client.ApproveAsync(approval.Id, "Auto-approved");
-    }
-    else
-    {
-        // Queue for human review or prompt interactively
-    }
-}
+    Query = "Review recent code changes",
+    AutoApprove = true,
+    AllowedTools = new[] { "Read", "Glob", "Grep" }
+});
+
+// Run daily with human approval for changes
+scheduler.Schedule("Daily Update", TimeSpan.FromHours(24), new AutomationTask
+{
+    Query = "Update documentation for new features",
+    AutoApprove = false  // Requires approval
+});
+
+await scheduler.RunAsync(cancellationToken);
+```
+
+## Project Structure
+
+```
+humanlayer-dotnet/
+├── HumanLayerAutomation.csproj  # Project file
+├── HumanLayerClient.cs          # REST API client
+├── Models.cs                     # Request/response models
+├── Program.cs                    # CLI and examples
+├── README.md                     # This file
+└── docs/
+    ├── getting-started.md        # Setup guide
+    ├── concepts.md               # Core concepts
+    ├── architecture.md           # System architecture
+    ├── api-reference.md          # API documentation
+    ├── patterns.md               # Best practices
+    ├── security.md               # Security guide
+    └── roadmap.md                # Future plans
 ```
 
 ## API Reference
 
-### HumanLayerClient
+### Session Methods
 
 ```csharp
-// Create client
-var client = new HumanLayerClient("http://localhost:7777/api/v1");
-
-// Health check
-var health = await client.HealthAsync();
-
-// Sessions
+// Launch new session
 var session = await client.CreateSessionAsync(request);
-var sessions = await client.ListSessionsAsync();
+
+// Get session details
 var details = await client.GetSessionAsync(sessionId);
+
+// List all sessions
+var sessions = await client.ListSessionsAsync();
+
+// Continue from existing session
+var child = await client.ContinueSessionAsync(sessionId, "Next query");
+
+// Wait for completion
 var result = await client.WaitForSessionAsync(sessionId, timeout);
-await client.InterruptSessionAsync(sessionId);
-
-// Approvals
-var approvals = await client.GetPendingApprovalsAsync();
-await client.ApproveAsync(approvalId, comment);
-await client.DenyAsync(approvalId, reason);
-
-// Events (SSE)
-await client.SubscribeToEventsAsync(onEvent, eventTypes, sessionId, ct);
-
-// High-level automation
-var result = await client.RunTaskAsync(automationTask);
 ```
 
-## Extending the Examples
-
-### Adding Custom Approval Policies
-
-Create a policy-based approval system:
+### Approval Methods
 
 ```csharp
-public interface IApprovalPolicy
-{
-    ApprovalDecision Evaluate(Approval approval);
-}
+// Get pending approvals
+var pending = await client.GetPendingApprovalsAsync();
 
-public record ApprovalDecision(bool AutoApprove, string? Reason);
+// Approve
+await client.ApproveAsync(approvalId, "Looks good");
 
-public class TimeBasedPolicy : IApprovalPolicy
-{
-    public ApprovalDecision Evaluate(Approval approval)
-    {
-        // Auto-approve during business hours only
-        var hour = DateTime.Now.Hour;
-        if (hour >= 9 && hour < 17)
-            return new(true, "Business hours auto-approve");
-        return new(false, null);
-    }
-}
+// Deny
+await client.DenyAsync(approvalId, "Too risky");
 ```
 
-### Integrating with Notification Systems
+### Event Streaming
 
 ```csharp
 await client.SubscribeToEventsAsync(
-    onEvent: async evt =>
-    {
-        if (evt.Type == "new_approval")
-        {
-            await SendSlackNotification($"New approval needed: {evt.Data}");
-        }
-    },
-    eventTypes: ["new_approval"]
+    onEvent: evt => Console.WriteLine($"{evt.Type}: {evt.Data}"),
+    eventTypes: new[] { "new_approval", "session_status_changed" }
 );
 ```
 
-## Troubleshooting
+## Contributing
 
-### Cannot connect to daemon
-- Ensure `hld daemon start` is running
-- Check the daemon URL matches your configuration
-- Verify firewall allows connections to port 7777
+Contributions are welcome! See [docs/roadmap.md](docs/roadmap.md) for contribution opportunities.
 
-### Sessions stuck in "running"
-- Check Claude Code is installed and accessible
-- Review daemon logs: `hld logs`
-- Verify working directory exists and is accessible
-
-### Approvals not appearing
-- Ensure session is using permission prompt tool
-- Check MCP configuration is correct
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
 ## License
 
-MIT License - See main HumanLayer repository for details.
+MIT License - See [LICENSE](LICENSE) for details.
+
+## Related Projects
+
+- [HumanLayer](https://github.com/humanlayer/humanlayer) - Core platform
+- [Claude Code](https://claude.ai/code) - AI coding assistant
+- [OpenRouter](https://openrouter.ai) - Multi-model gateway
+
+## Support
+
+- **Issues**: https://github.com/humanlayer/humanlayer/issues
+- **Discussions**: https://github.com/humanlayer/humanlayer/discussions
+- **Documentation**: https://humanlayer.dev/docs
